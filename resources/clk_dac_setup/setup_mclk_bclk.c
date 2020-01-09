@@ -273,7 +273,14 @@ int main(int argc, char *argv[])
     int clk_i = 20;
     int clk_f = 1413;
     int clk_enable = 1;
+    // f = 500 / (20 + (1413 / 4096)) = 24.5760983044MHz
+    // It will jump between:
+    // 500 / 20 = 25MHz and 500 / 21 = 23.8095238095MHz
 
+    // Adjacent freqs are 500 / (20 + 1414 /4096) = 24.5758033936  -> -12PPM
+    // and
+    // 500 / (20 + 1412 /4096) = 24.5763932223 +12PPM
+    
     printf("MCLK: Using %s (I=%-4d F=%-4d MASH=%d)\n",
             clocks[clk_source], clk_i, clk_f, clk_mash);
 #else
