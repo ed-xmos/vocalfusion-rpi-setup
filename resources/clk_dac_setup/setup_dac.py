@@ -5,8 +5,9 @@
 
 import smbus
 import time
+import sys
 
-def setup_dac():
+def setup_dac(ppm):
     samFreq = 48000
     bus = smbus.SMBus(1)
     
@@ -58,7 +59,8 @@ def setup_dac():
     bus.write_byte_data(DEVICE_ADDRESS, DAC3101_PAGE_CTRL, 0x00) 
     # Initiate SW reset (PLL is powered off as part of reset)
     bus.write_byte_data(DEVICE_ADDRESS, DAC3101_SW_RST, 0x01) 
-    # so I've got 24MHz in to PLL, I want 24.576MHz or 22.5792MHz out.
+
+    # so I've got 24.576MHz in to PLL, I want 24.576MHz +- xxxPPM out
 
     # I will always be using fractional-N (D != 0) so we must set R = 1
     # PLL_CLKIN/P must be between 10 and 20MHz so we must set P = 2
@@ -69,48 +71,39 @@ def setup_dac():
                 
     # For 24.576MHz:
     # J = 8
-    # D = 1920
-    # So PLL_CLK = 24 * (8.192/2) = 24 x 4.096 = 98.304MHz
+    # D = 0
+    # So PLL_CLK = 24.576 * (8.0/2) = 24.476 x 4 = 98.304MHz
     # Then:
     # NDAC = 4
-    # MDAC = 4
-    # DOSR = 128
+    # MDAC = 4 (Don't care)
+    # DOSR = 128 (Don't care)
     # So:
     # DAC_CLK = PLL_CLK / 4 = 24.576MHz.
     # DAC_MOD_CLK = DAC_CLK / 4 = 6.144MHz.
     # DAC_FS = DAC_MOD_CLK / 128 = 48kHz.
 
-    # For 22.5792MHz:
-    # J = 7
-    # D = 5264
-    # So PLL_CLK = 24 * (7.5264/2) = 24 x 3.7632 = 90.3168MHz
-    # Then:
-    # NDAC = 4
-    # MDAC = 4
-    # DOSR = 128
-    # So:
-    # DAC_CLK = PLL_CLK / 4 = 22.5792MHz.
-    # DAC_MOD_CLK = DAC_CLK / 4 = 5.6448MHz.
-    # DAC_FS = DAC_MOD_CLK / 128 = 44.1kHz.
+    ratio = ppm / 1000000.0
+    pll_mul = 8.0 * (1.0 + ratio)
+    J = int(pll_mul)
+    D = int((pll_mul - float(J)) * 1000)
 
-    # This setup is for 3.072MHz in, 24.576MHz out.
-    # We want PLLP = 1, PLLR = 4, PLLJ = 8, PLLD = 0, MDAC = 4, NDAC = 4, DOSR = 128
+    print("J:", J, "D:", D)
 
-    # Set PLL J Value to 7
-    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_PLL_J, 0x08);
+    # Set PLL J Value to 8
+    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_PLL_J, 8);
     # Set PLL D to 0 ...
     # Set PLL D MSB Value to 0x00
-    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_PLL_D_MSB, 0x00);
+    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_PLL_D_MSB, D >> 8);
     # Set PLL D LSB Value to 0x00
-    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_PLL_D_LSB, 0x00);
+    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_PLL_D_LSB, D & 0xff);
 
     time.sleep(0.001);
     
-    # Set PLL_CLKIN = BCLK (device pin), CODEC_CLKIN = PLL_CLK (generated on-chip)
-    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_CLK_GEN_MUX, 0x07);
+    # Set PLL_CLKIN = MCLK (device pin), CODEC_CLKIN = PLL_CLK (generated on-chip)
+    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_CLK_GEN_MUX, (0 << 2) | 3);
     
     # Set PLL P and R values and power up.
-    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_PLL_P_R, 0x94);
+    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_PLL_P_R, 0x80 | (2 << 4) | (1) );
         
 
     # Set NDAC clock divider to 4 and power up.
@@ -121,7 +114,7 @@ def setup_dac():
     bus.write_byte_data(DEVICE_ADDRESS, DAC3101_DOSR_VAL_LSB, 0x80)
 
     # Set CLKOUT Mux to DAC_CLK
-    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_CLKOUT_MUX, 0x04)
+    bus.write_byte_data(DEVICE_ADDRESS, DAC3101_CLKOUT_MUX, 0x4)
     # Set CLKOUT M divider to 1 and power up.
     bus.write_byte_data(DEVICE_ADDRESS, DAC3101_CLKOUT_M_VAL, 0x81)
     # Set GPIO1 output to come from CLKOUT output.
@@ -146,6 +139,7 @@ def setup_dac():
     bus.write_byte_data(DEVICE_ADDRESS, DAC3101_HPR_DRVR, 0x06)
     # Unmute Left Class-D, set gain = 12 dB
     bus.write_byte_data(DEVICE_ADDRESS, DAC3101_SPKL_DRVR, 0x0C)
+    # Unmute Right Class-D, set gain = 12 dB
     # Unmute Right Class-D, set gain = 12 dB
     bus.write_byte_data(DEVICE_ADDRESS, DAC3101_SPKR_DRVR, 0x0C)
     # Power up output drivers
@@ -179,4 +173,4 @@ def setup_dac():
     bus.write_byte_data(DEVICE_ADDRESS, DAC3101_DAC_VOL, 0x00)
 
 if __name__ == "__main__":
-    setup_dac()
+    setup_dac(float(sys.argv[1]))

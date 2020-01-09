@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-pushd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null
 RPI_SETUP_DIR="$( pwd )"
 
 
-pushd $RPI_SETUP_DIR/resources/clk_dac_setup/ > /dev/null
+cd $RPI_SETUP_DIR/resources/clk_dac_setup/
 make
-popd > /dev/null
+cd -
 i2s_clk_dac_script=$RPI_SETUP_DIR/resources/init_i2s_clks.sh
 rm -f $i2s_clk_dac_script
 echo "sudo $RPI_SETUP_DIR/resources/clk_dac_setup/setup_mclk"           >> $i2s_clk_dac_script
@@ -136,4 +135,4 @@ echo "python $RPI_SETUP_DIR/resources/clk_dac_setup/reset_xvf3510.py"   >> $i2s_
 
 # echo "To enable I2S, I2C and SPI, this Raspberry Pi must be rebooted."
 
-popd > /dev/null
+# popd > /dev/null
