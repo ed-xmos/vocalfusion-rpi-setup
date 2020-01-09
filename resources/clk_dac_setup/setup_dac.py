@@ -85,7 +85,7 @@ def setup_dac(ppm):
     ratio = ppm / 1000000.0
     pll_mul = 8.0 * (1.0 + ratio)
     J = int(pll_mul)
-    D = int((pll_mul - float(J)) * 1000)
+    D = int((pll_mul - float(J)) * 10000)
 
     print("J:", J, "D:", D)
 
