@@ -83,6 +83,11 @@ def setup_dac(ppm):
     # DAC_FS = DAC_MOD_CLK / 128 = 48kHz.
 
     ratio = ppm / 1000000.0
+    # Calculate what ratio change each fractional step is worth
+    ratio_step = (8.0001 / (8.0000)) - 1
+    # print("ratio step",ratio_step)
+    # Add half of it so we round to the nearest step instead of truncate
+    ratio += ratio_step / 2
     pll_mul = 8.0 * (1.0 + ratio)
     J = int(pll_mul)
     D = int((pll_mul - float(J)) * 10000)
